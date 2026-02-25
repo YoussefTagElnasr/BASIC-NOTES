@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notes App</title>
+</head>
+<body>
+    <textarea id="notes"></textarea>
+    <h2 id="notesHeader"></h2>
+    <script>
+        const notes = document.getElementById('notes');
+        const saveButton = document.getElementById('saveButton');
+        const h2Element = document.getElementById('notesHeader');
+        const backendUrl = 'http://localhost:3000'
+
+        async function loadNotes() {
+            try {
+                const res = await fetch(backendUrl+'/get-notes');
+                const data = await res.json();
+
+                if (data && data.content) {
+                    notes.value = data.content;
+                    h2Element.innerHTML = data.content;
+                }
+            } catch (err) {
+                console.error('Error loading notes:', err);
+            }
+        }
+
+        async function saveNotes() {
+            try {
+                await fetch(backendUrl+'/write-notes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ content: notes.value })
+                });
+                h2Element.textContent = notes.value;
+            } catch (err) {
+                console.error('Error saving notes:', err);
+            }
+        }
+
+        loadNotes();
+
+        let timeout;
+        notes.addEventListener('input', () => {
+            timeout = setTimeout(saveNotes, 1000);
+        });
+    </script>
+
+    <style>
+        #notes {
+            width: 400px;
+            height: 200px;
+            resize: none;
+        }
+
+        #saveButton {
+            width: 150px;
+            height: 50px;
+            margin-top: 10px;
+        }
+    </style>
+</body>
+</html>
