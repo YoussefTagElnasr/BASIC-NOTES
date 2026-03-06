@@ -1,53 +1,63 @@
-import sqlite3 from "sqlite3";
 import express from "express";
 import cors from 'cors';
+import prisma from "./dbClient.js"
+
 const PORT = 3000;
 const app = express();
-const db = new sqlite3.Database("DB/notes.db");
+
 app.use(express.json());
 app.use(cors());
 
-const query = 'CREATE TABLE IF NOT EXISTS notes (content TEXT NOT NULL , id INTEGER PRIMARY KEY CHECK (id = 1))';
-db.exec(query);
+async function init() {
+  await prisma.note.upsert({
+    where: { id: 1 },
+    update: {},
+    create: {
+      id: 1,
+      content: ""
+    }
+  });
+}
 
-db.run(
-  "INSERT OR IGNORE INTO notes (id, content) VALUES (1, '')"
-);
+init();
 
-db.get('SELECT * FROM notes' , (err , row) => {
-    console.log(row);
-})
-
-app.get('/get-notes' , (req , res) => {
-    db.get('SELECT content FROM notes WHERE id = 1' , (err , row) => {
-        if (err){
-            return res.status(500).json({error : err.message});
-        }
-        return res.json(row);
-    });
-})
-
-app.post('/write-notes' , (req , res) => {
-    const content = req.body.content;
-    db.run("UPDATE notes SET content = ? WHERE id = 1",
-        [content] , function(err) {
-            if (err) {
-                return res.status(500).json({ error:err.message});
-            } if (!content){
-                return res.status(404).json({error:"file not found"});
+app.get('/get-notes' , async (req , res) => {
+    try {
+        const note = await prisma.note.findUnique({
+            where : {
+                id : 1
             }
-            res.json({message:"content has been saved"});
-        }
-    );
-})
-
-
-app.listen(PORT , () => {
-    console.log("server started");
+        })
+        res.json(note);
+    } catch (error){
+        res.status(500).json({ error: err.message });
+    }
 });
 
 
-// right now i need orm for this to learn how orms work 
+app.post('/write-notes', async (req, res) => {
+  const { content } = req.body;
+  if (content === undefined) {
+    return res.status(400).json({ error: "content required" });
+  }
+
+  try {
+    await prisma.note.update({
+      where: { id: 1 },
+      data: { content }
+    });
+
+    res.json({ message: "content has been saved" });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+
+});
+
+app.listen(PORT, () => {
+  console.log("server started");
+});
+
 // and then i need to run this on a docker container instead of my machine
 // and finally we move the data from sqlite to postgress
-// 
